@@ -1,0 +1,21 @@
+# Archivos de configuración local
+.env
+*.env
+
+# Archivos de base de datos exportados
+*.sql
+
+# Archivos comprimidos o backups
+*.zip
+*.rar
+
+# Archivos de sistema
+.DS_Store
+Thumbs.db
+
+# Carpetas de dependencias
+vendor/
+node_modules/
+
+# Logs
+*.log
