@@ -25,9 +25,10 @@ body {
 
 /* Botón flotante de WhatsApp */
 .whatsapp-float {
-  position: fixed;
-  bottom: 20px;
-  right: 20px;
+  position: fixed !important;
+  bottom: 20px !important;
+  left: 20px !important;
+  right: auto !important;
   background: #25D366;
   color: #fff;
   border-radius: 50%;
@@ -38,9 +39,12 @@ body {
   justify-content: center;
   font-size: 28px;
   box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-  z-index: 1000;
+  z-index: 5000;
   transition: background 0.3s ease;
 }
+
+
+
 
 /* Aseguramos que el <i> use Bootstrap Icons, no herede nada */
 .whatsapp-float i {

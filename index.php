@@ -27,6 +27,20 @@ if (!empty($_SESSION['rol'])) {
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
 </head>
 
+<!--Start of Tawk.to Script-->
+<script type="text/javascript">
+var Tawk_API=Tawk_API||{}, Tawk_LoadStart=new Date();
+(function(){
+var s1=document.createElement("script"),s0=document.getElementsByTagName("script")[0];
+s1.async=true;
+s1.src='https://embed.tawk.to/6841f1a498d2da1914a1a5e4/1it0pfr1d';
+s1.charset='UTF-8';
+s1.setAttribute('crossorigin','*');
+s0.parentNode.insertBefore(s1,s0);
+})();
+</script>
+<!--End of Tawk.to Script-->
+
 <body class="pagina">
 
   <!-- INICIO + NAV -->
@@ -288,13 +302,29 @@ if (!empty($_SESSION['rol'])) {
 
     <!-- Botón flotante de WhatsApp: fuera de `.pagina`, justo antes de los scripts -->
   <a
-    href="https://wa.me/549XXXXXXXXXX"
-    class="whatsapp-float"
-    target="_blank"
-    aria-label="Chatear por WhatsApp"
-  >
-    <i class="bi bi-whatsapp"></i>
-  </a>
+  href="https://wa.me/549XXXXXXXXXX"
+  style="
+    position: fixed;
+    bottom: 20px;
+    left: 20px;
+    width: 56px;
+    height: 56px;
+    background: #25D366;
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    z-index: 5000;
+  "
+  target="_blank"
+  aria-label="Chatear por WhatsApp"
+>
+  <i class="bi bi-whatsapp" style="font-size: 1.2em;"></i>
+</a>
+
 
 
   <script src="scripts/script.js"></script>
