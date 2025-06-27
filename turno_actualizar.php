@@ -5,25 +5,23 @@ if (!isset($_SESSION['rol']) || $_SESSION['rol'] !== 'empleado') {
     exit;
 }
 
-require_once __DIR__ . '/config.php'; // Confirma que config.php define $conexion
+require_once __DIR__ . '/config.php';
 
-$usuario       = $_SESSION['usuario'] ?? '';
-$idTurno       = isset($_REQUEST['id_turno']) ? (int) $_REQUEST['id_turno'] : 0;
-$accion        = $_GET['accion'] ?? '';   // “cumplido” o “cancelado”
-$mensajeError  = "";
+$usuario = $_SESSION['usuario'] ?? '';
+$idTurno = $_SERVER['REQUEST_METHOD'] === 'POST'
+    ? (int) ($_POST['id_turno'] ?? 0)
+    : (int) ($_GET['id_turno'] ?? 0);
 
-// -----------------------------------------------------------------------------
-// 1) Obtener el ID del empleado logueado (para el INSERT/UPDATE en historial_atenciones)
-// -----------------------------------------------------------------------------
+$accion = $_GET['accion'] ?? '';
+$mensajeError = "";
+
+// Obtener ID del empleado
 $idEmpleado = null;
-$sqlEmp = "
-    SELECT e.id 
-    FROM empleados e
+$stmtEmp = $conexion->prepare("
+    SELECT e.id FROM empleados e
     JOIN usuarios u ON e.usuario_id = u.id
     WHERE u.usuario = ?
-    LIMIT 1
-";
-$stmtEmp = $conexion->prepare($sqlEmp);
+");
 $stmtEmp->bind_param("s", $usuario);
 $stmtEmp->execute();
 $resEmp = $stmtEmp->get_result();
@@ -33,125 +31,90 @@ if ($filaEmp = $resEmp->fetch_assoc()) {
 $stmtEmp->close();
 
 if (!$idEmpleado) {
-    // Si no encontramos empleado, redirigimos
     header("Location: panel_empleado.php");
     exit;
 }
 
-// -----------------------------------------------------------------------------
-// 2) Obtener el ID del cliente asociado a este turno (para el INSERT/UPDATE en historial_atenciones)
-// -----------------------------------------------------------------------------
+// Obtener cliente del turno
 $idClienteTurno = null;
-if ($idTurno) {
-    $sqlGetCliente = "SELECT id_cliente FROM turnos WHERE id = ? LIMIT 1";
-    $stmtGetCli = $conexion->prepare($sqlGetCliente);
-    $stmtGetCli->bind_param("i", $idTurno);
-    $stmtGetCli->execute();
-    $resGetCli = $stmtGetCli->get_result();
-    if ($filaC = $resGetCli->fetch_assoc()) {
-        $idClienteTurno = $filaC['id_cliente'];
-    }
-    $stmtGetCli->close();
+$stmtCli = $conexion->prepare("SELECT id_cliente FROM turnos WHERE id = ? LIMIT 1");
+$stmtCli->bind_param("i", $idTurno);
+$stmtCli->execute();
+$resCli = $stmtCli->get_result();
+if ($filaC = $resCli->fetch_assoc()) {
+    $idClienteTurno = $filaC['id_cliente'];
 }
+$stmtCli->close();
 
 if (!$idClienteTurno) {
-    // Si no existe ese turno o no tiene cliente, redirigimos
     header("Location: panel_empleado.php");
     exit;
 }
 
-// -----------------------------------------------------------------------------
-// 3) Traer el detalle ya guardado en historial_atenciones (si existe)
-// -----------------------------------------------------------------------------
-$detalleGuardado = "";
-if ($idTurno) {
-    $sqlHist = "SELECT detalle FROM historial_atenciones WHERE id_turno = ? LIMIT 1";
-    $stmtHist = $conexion->prepare($sqlHist);
-    $stmtHist->bind_param("i", $idTurno);
-    $stmtHist->execute();
-    $resHist = $stmtHist->get_result();
-    if ($filaH = $resHist->fetch_assoc()) {
-        $detalleGuardado = $filaH['detalle'];
-    }
-    $stmtHist->close();
+// Traer detalle previo
+$detalleGuardado = '';
+$stmtHist = $conexion->prepare("SELECT detalle FROM historial_atenciones WHERE id_turno = ? LIMIT 1");
+$stmtHist->bind_param("i", $idTurno);
+$stmtHist->execute();
+$resHist = $stmtHist->get_result();
+if ($filaH = $resHist->fetch_assoc()) {
+    $detalleGuardado = $filaH['detalle'];
 }
+$stmtHist->close();
 
-// -----------------------------------------------------------------------------
-// 4) Preseleccionar estado según GET “accion” (cumplido/cancelado)
-// -----------------------------------------------------------------------------
-$estadoSeleccionado = in_array($accion, ['cumplido', 'cancelado'], true)
-                     ? $accion
-                     : "";
+// Estado seleccionado (para mantener selección)
+$estadoSeleccionado = $_SERVER['REQUEST_METHOD'] === 'POST'
+    ? ($_POST['estado'] ?? '')
+    : (in_array($accion, ['cumplido', 'cancelado']) ? $accion : '');
 
-// -----------------------------------------------------------------------------
-// 5) Si envían el formulario por POST, procesar actualización e historial
-// -----------------------------------------------------------------------------
+// Procesar formulario
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $nuevoEstado  = $_POST['estado']  ?? "";
-    $nuevoDetalle = trim($_POST['detalle'] ?? "");
+    $nuevoEstado = trim(strtolower($_POST['estado'] ?? ''));
+    $nuevoDetalle = trim($_POST['detalle'] ?? '');
 
-    if (!$idTurno || !in_array($nuevoEstado, ['cumplido', 'cancelado'], true)) {
-        $mensajeError = "Faltan datos obligatorios.";
+    if ($nuevoEstado === '' && $nuevoDetalle !== '') {
+        $nuevoEstado = 'cumplido';
+    }
+
+    if (!in_array($nuevoEstado, ['cumplido', 'cancelado'], true)) {
+        $mensajeError = "Debe seleccionar un estado válido o ingresar un detalle.";
     } else {
-        // a) Actualizar el estado en la tabla `turnos`
-        $sqlUpdateTurno = "UPDATE turnos SET estado = ? WHERE id = ?";
-        $stmtUpd = $conexion->prepare($sqlUpdateTurno);
-        $stmtUpd->bind_param("si", $nuevoEstado, $idTurno);
-        $stmtUpd->execute();
-        $stmtUpd->close();
+        // ✅ FORZAR UPDATE DEL ESTADO
+        $stmtUpdate = $conexion->prepare("UPDATE turnos SET estado = ? WHERE id = ?");
+        $stmtUpdate->bind_param("si", $nuevoEstado, $idTurno);
+        $stmtUpdate->execute();
+        $stmtUpdate->close();
 
-        // b) Insertar o actualizar en `historial_atenciones`
-        $sqlCheck = "SELECT id FROM historial_atenciones WHERE id_turno = ? LIMIT 1";
-        $stmtChk = $conexion->prepare($sqlCheck);
-        $stmtChk->bind_param("i", $idTurno);
-        $stmtChk->execute();
-        $resChk = $stmtChk->get_result();
+        // ✅ Insertar o actualizar detalle en historial
+        $stmtCheck = $conexion->prepare("SELECT id FROM historial_atenciones WHERE id_turno = ? LIMIT 1");
+        $stmtCheck->bind_param("i", $idTurno);
+        $stmtCheck->execute();
+        $resCheck = $stmtCheck->get_result();
 
-        if ($resChk->num_rows > 0) {
-            // Ya existe un registro de historial -> UPDATE
-            $filaChk = $resChk->fetch_assoc();
-            $idHist = $filaChk['id'];
-            $stmtChk->close();
+        if ($resCheck->num_rows > 0) {
+            $idHist = $resCheck->fetch_assoc()['id'];
+            $stmtCheck->close();
 
-            $sqlUpdHist = "
+            $stmtUpdHist = $conexion->prepare("
                 UPDATE historial_atenciones
-                SET detalle     = ?,
-                    fecha_hora  = NOW(),
-                    id_empleado = ?,
-                    id_cliente  = ?
+                SET detalle = ?, fecha_hora = NOW(), id_empleado = ?, id_cliente = ?
                 WHERE id = ?
-            ";
-            $stmtUpdHist = $conexion->prepare($sqlUpdHist);
-            $stmtUpdHist->bind_param("siii",
-                $nuevoDetalle,      // detalle (s)
-                $idEmpleado,        // id_empleado (i)
-                $idClienteTurno,    // id_cliente (i)
-                $idHist             // id (i)
-            );
+            ");
+            $stmtUpdHist->bind_param("siii", $nuevoDetalle, $idEmpleado, $idClienteTurno, $idHist);
             $stmtUpdHist->execute();
             $stmtUpdHist->close();
         } else {
-            // No existe registro -> INSERT
-            $stmtChk->close();
+            $stmtCheck->close();
 
-            $sqlInsHist = "
-                INSERT INTO historial_atenciones
-                  (id_turno, id_cliente, id_empleado, detalle)
-                VALUES
-                  (?, ?, ?, ?)
-            ";
-            $stmtInsHist = $conexion->prepare($sqlInsHist);
-            $stmtInsHist->bind_param("iiis",
-                $idTurno,           // id_turno (i)
-                $idClienteTurno,    // id_cliente (i)
-                $idEmpleado,        // id_empleado (i)
-                $nuevoDetalle       // detalle (s)
-            );
+            $stmtInsHist = $conexion->prepare("
+                INSERT INTO historial_atenciones (id_turno, id_cliente, id_empleado, detalle)
+                VALUES (?, ?, ?, ?)
+            ");
+            $stmtInsHist->bind_param("iiis", $idTurno, $idClienteTurno, $idEmpleado, $nuevoDetalle);
             $stmtInsHist->execute();
             $stmtInsHist->close();
         }
 
-        // c) Redirigir al panel del empleado
         header("Location: panel_empleado.php");
         exit;
     }
@@ -164,7 +127,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   <meta charset="UTF-8">
   <title>Actualizar Turno – RelaxSp</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <!-- Bootstrap 5 CSS y Bootstrap Icons -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
 </head>
@@ -172,26 +134,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <div class="container mt-5">
   <h3 class="mb-4">Detalle del Turno #<?= htmlspecialchars($idTurno) ?></h3>
 
-  <!-- Mensaje de error -->
   <?php if ($mensajeError): ?>
     <div class="alert alert-danger"><?= htmlspecialchars($mensajeError) ?></div>
   <?php endif; ?>
 
-  <!-- Formulario -->
   <form method="POST" class="row g-3">
+    <input type="hidden" name="id_turno" value="<?= $idTurno ?>">
+
     <div class="col-md-6">
       <label for="estado" class="form-label">Estado</label>
-      <select name="estado" id="estado" class="form-select" required>
+      <select name="estado" id="estado" class="form-select">
         <option value="">Seleccionar estado…</option>
-        <option value="cumplido"   <?= $estadoSeleccionado === 'cumplido'   ? 'selected' : '' ?>>Cumplido</option>
-        <option value="cancelado"  <?= $estadoSeleccionado === 'cancelado'  ? 'selected' : '' ?>>Cancelado</option>
+        <option value="cumplido" <?= $estadoSeleccionado === 'cumplido' ? 'selected' : '' ?>>Cumplido</option>
+        <option value="cancelado" <?= $estadoSeleccionado === 'cancelado' ? 'selected' : '' ?>>Cancelado</option>
       </select>
+      <small class="text-muted">Si solo escribís un detalle, se marcará como <strong>cumplido</strong>.</small>
     </div>
 
     <div class="col-12">
       <label for="detalle" class="form-label">Detalle (opcional)</label>
-      <textarea name="detalle" id="detalle" rows="4" class="form-control"
-                placeholder="Describe brevemente qué realizaste o motivo de cancelación…"><?= htmlspecialchars($detalleGuardado) ?></textarea>
+      <textarea name="detalle" id="detalle" rows="4" class="form-control"><?= htmlspecialchars($detalleGuardado) ?></textarea>
     </div>
 
     <div class="col-12 d-flex justify-content-between">
@@ -204,8 +166,5 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </div>
   </form>
 </div>
-
-<!-- Bootstrap JS (opcional) -->
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

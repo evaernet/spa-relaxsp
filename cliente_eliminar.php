@@ -7,17 +7,11 @@ if (!isset($_SESSION['rol']) || $_SESSION['rol'] !== 'admin') {
 
 require_once __DIR__ . '/config.php';
 
-
 $id = intval($_GET['id']);
 $usuario = $_SESSION['usuario'];
 
-$conexion = new mysqli("localhost", "root", "", "relaxsp");
-if ($conexion->connect_error) {
-    die("Error de conexión: " . $conexion->connect_error);
-}
-
-// Verificar si el cliente tiene turnos asignados
-$sqlVerifica = "SELECT COUNT(*) AS total FROM turnos WHERE id_cliente = ?";
+// 1. Verificar si tiene turnos activos (no cancelados)
+$sqlVerifica = "SELECT COUNT(*) AS total FROM turnos WHERE id_cliente = ? AND estado != 'cancelado'";
 $stmtVerifica = $conexion->prepare($sqlVerifica);
 $stmtVerifica->bind_param("i", $id);
 $stmtVerifica->execute();
@@ -36,7 +30,7 @@ if ($data['total'] > 0) {
       <div class='container mt-5'>
         <div class='alert alert-warning text-center'>
           <h4 class='alert-heading'>No se puede eliminar el cliente</h4>
-          <p>Este cliente tiene turnos registrados. Debe cancelarlos antes de eliminarlo.</p>
+          <p>Este cliente tiene turnos activos. Debe cancelarlos o eliminarlos antes de continuar.</p>
           <a href='admin_clientes.php' class='btn btn-secondary mt-3'>Volver</a>
         </div>
       </div>
@@ -45,27 +39,41 @@ if ($data['total'] > 0) {
     exit;
 }
 
-// Obtener datos del cliente para la auditoría
+// 2. Eliminar auditoría de sus turnos cancelados
+$sqlDeleteAudit = "
+    DELETE FROM auditoria_turnos 
+    WHERE turno_id IN (
+        SELECT id FROM turnos WHERE id_cliente = ? AND estado = 'cancelado'
+    )";
+$stmtAudit = $conexion->prepare($sqlDeleteAudit);
+$stmtAudit->bind_param("i", $id);
+$stmtAudit->execute();
+
+// 3. Eliminar sus turnos cancelados
+$sqlDeleteTurnos = "DELETE FROM turnos WHERE id_cliente = ? AND estado = 'cancelado'";
+$stmtDelTurnos = $conexion->prepare($sqlDeleteTurnos);
+$stmtDelTurnos->bind_param("i", $id);
+$stmtDelTurnos->execute();
+
+// 4. Obtener datos del cliente para la auditoría
 $stmtCli = $conexion->prepare("SELECT nombre, email FROM clientes WHERE id = ?");
 $stmtCli->bind_param("i", $id);
 $stmtCli->execute();
 $resultCli = $stmtCli->get_result();
 $cliente = $resultCli->fetch_assoc();
 
-// Eliminar cliente
-$sql = "DELETE FROM clientes WHERE id = ?";
-$stmt = $conexion->prepare($sql);
+// 5. Eliminar cliente
+$stmt = $conexion->prepare("DELETE FROM clientes WHERE id = ?");
 $stmt->bind_param("i", $id);
 $stmt->execute();
 
-// Registrar auditoría
+// 6. Registrar auditoría del cliente eliminado
 if ($cliente) {
     $detalle = "Cliente eliminado: Nombre = {$cliente['nombre']}, Email = {$cliente['email']}";
     $accion = "eliminacion_cliente";
 
-    $sqlAuditoria = "INSERT INTO auditoria_turnos (turno_id, accion, usuario, detalle)
-                     VALUES (NULL, ?, ?, ?)";
-    $stmtAudit = $conexion->prepare($sqlAuditoria);
+    $stmtAudit = $conexion->prepare("INSERT INTO auditoria_turnos (turno_id, accion, usuario, detalle)
+                                     VALUES (NULL, ?, ?, ?)");
     $stmtAudit->bind_param("sss", $accion, $usuario, $detalle);
     $stmtAudit->execute();
 }

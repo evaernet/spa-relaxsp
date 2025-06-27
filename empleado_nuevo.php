@@ -1,4 +1,3 @@
-
 <?php
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $nombre = $_POST['nombre'] ?? '';
@@ -19,7 +18,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $error = "Error al guardar: " . $e->getMessage();
         }
     } else {
-        $error = "Nombre y rol son obligatorios.";
+        $error = "El nombre y el rol son obligatorios.";
     }
 }
 ?>
@@ -33,9 +32,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="styles/style.css">
 </head>
-<body class="admin-page">
+<body class="admin-page" style="background-color: #f8f9fa;">
   <div class="container my-5">
-    <h2 class="mb-4 text-center text-md-start" style="color: #9C7CC1;">Agregar Nuevo Empleado</h2>
+    <h2 class="mb-3 text-center" style="color: #9C7CC1;">Agregar Nuevo Empleado</h2>
+    <p class="text-muted text-center mb-4">Completá los siguientes datos para registrar un nuevo miembro del equipo.</p>
 
     <?php if (!empty($error)): ?>
       <div class="alert alert-danger"><?= htmlspecialchars($error) ?></div>
@@ -43,20 +43,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     <form method="post" class="card p-4 shadow-sm">
       <div class="mb-3">
-        <label class="form-label">Nombre</label>
-        <input type="text" name="nombre" class="form-control" required>
+        <label for="nombre" class="form-label">Nombre completo</label>
+        <input type="text" name="nombre" id="nombre" class="form-control" required placeholder="Ej: Laura Pérez">
       </div>
       <div class="mb-3">
-        <label class="form-label">Email</label>
-        <input type="email" name="email" class="form-control">
+        <label for="email" class="form-label">Correo electrónico</label>
+        <input type="email" name="email" id="email" class="form-control" placeholder="Ej: laura@email.com">
       </div>
       <div class="mb-3">
-        <label class="form-label">Teléfono</label>
-        <input type="text" name="telefono" class="form-control">
+        <label for="telefono" class="form-label">Teléfono</label>
+        <input type="text" name="telefono" id="telefono" class="form-control" placeholder="Ej: 3624000000">
       </div>
       <div class="mb-3">
-        <label class="form-label">Rol</label>
-        <input type="text" name="rol" class="form-control" required>
+        <label for="rol" class="form-label">Rol</label>
+        <input type="text" name="rol" id="rol" class="form-control" required placeholder="Ej: masajista, recepcionista, etc.">
       </div>
       <div class="d-flex justify-content-between">
         <a href="admin_empleados.php" class="btn btn-secondary">Cancelar</a>

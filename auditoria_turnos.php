@@ -42,6 +42,13 @@ if ($resultado && $resultado->num_rows > 0) {
       <a href="logout.php" class="text-danger"><i class="bi bi-box-arrow-right me-2"></i>Cerrar sesión</a>
     </nav>
 
+
+    <a href="eliminar_turnos_cancelados.php" class="btn btn-danger mb-3"
+   onclick="return confirm('¿Estás seguro de eliminar TODOS los turnos cancelados?')">
+  <i class="bi bi-trash3"></i> Eliminar turnos cancelados
+</a>
+
+
     <!-- Contenido principal -->
     <main class="col-12 col-md-10 main-content p-4">
       <h2 class="mb-4 text-center text-md-start">

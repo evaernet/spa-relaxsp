@@ -1,4 +1,3 @@
-
 <?php
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $nombre = $_POST['nombre'] ?? '';
@@ -32,9 +31,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="styles/style.css">
 </head>
-<body class="admin-page">
+<body class="admin-page" style="background-color: #f8f9fa;">
   <div class="container my-5">
-    <h2 class="mb-4 text-center text-md-start" style="color: #9C7CC1;">Agregar Nuevo Servicio</h2>
+    <h2 class="mb-4 text-center" style="color: #9C7CC1;">Agregar Nuevo Servicio</h2>
+    <p class="text-muted text-center mb-4">Completá los siguientes datos para registrar un nuevo servicio en el sistema.</p>
 
     <?php if (!empty($error)): ?>
       <div class="alert alert-danger"><?= htmlspecialchars($error) ?></div>
@@ -42,16 +42,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     <form method="post" class="card p-4 shadow-sm">
       <div class="mb-3">
-        <label class="form-label">Nombre</label>
-        <input type="text" name="nombre" class="form-control" required>
+        <label for="nombre" class="form-label">Nombre del servicio</label>
+        <input type="text" name="nombre" id="nombre" class="form-control" required placeholder="Ej: Masajes terapéuticos">
       </div>
       <div class="mb-3">
-        <label class="form-label">Descripción</label>
-        <textarea name="descripcion" class="form-control" rows="3"></textarea>
+        <label for="descripcion" class="form-label">Descripción</label>
+        <textarea name="descripcion" id="descripcion" class="form-control" rows="3" placeholder="Ej: Relajación muscular profunda..."></textarea>
       </div>
       <div class="mb-3">
-        <label class="form-label">Precio</label>
-        <input type="number" name="precio" class="form-control" step="0.01" required>
+        <label for="precio" class="form-label">Precio ($)</label>
+        <input type="number" name="precio" id="precio" class="form-control" step="0.01" required placeholder="Ej: 300">
       </div>
       <div class="d-flex justify-content-between">
         <a href="admin_servicios.php" class="btn btn-secondary">Cancelar</a>

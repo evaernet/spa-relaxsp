@@ -8,7 +8,6 @@ if (!isset($_SESSION['rol']) || $_SESSION['rol'] !== 'admin') {
 // Conexión a la base de datos
 require_once __DIR__ . '/config.php';
 
-
 // Obtener clientes
 $sql = "SELECT * FROM clientes";
 $resultado = $conexion->query($sql);
@@ -31,7 +30,7 @@ if ($resultado && $resultado->num_rows > 0) {
 <body>
   <div class="container mt-5">
     <h2 class="mb-4">Listado de Clientes</h2>
-    <a href="cliente_nuevo.php" class="btn btn-primary mb-3">Agregar nuevo cliente</a>
+
     <table class="table table-bordered table-hover">
       <thead class="table-light">
         <tr>
@@ -48,7 +47,11 @@ if ($resultado && $resultado->num_rows > 0) {
           <?php foreach ($clientes as $cliente): ?>
             <tr>
               <td><?= $cliente['id'] ?></td>
-              <td><?= $cliente['nombre'] ?></td>
+              <td>
+                <a href="historial_cliente.php?id_cliente=<?= $cliente['id'] ?>">
+                  <?= htmlspecialchars($cliente['nombre']) ?>
+                </a>
+              </td>
               <td><?= $cliente['email'] ?></td>
               <td><?= $cliente['telefono'] ?></td>
               <td><?= $cliente['activo'] ? 'Sí' : 'No' ?></td>
